@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
-const { getAllVotosUpdates } = require('../controller/VotosUpdatesController');
+const { getVotosUpdates } = require('../controller/VotosUpdatesController');
 
-router.get('/', getAllVotosUpdates);
+router.get('/', getVotosUpdates);
 
 module.exports = router;
