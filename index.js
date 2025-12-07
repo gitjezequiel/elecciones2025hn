@@ -1,7 +1,8 @@
 const express = require('express');
-const resultadosController = require('./controller/resultadosController');
+
 const departamentosController = require('./controller/departamentosController');
 const municipiosVotosController = require('./controller/municipiosVotosController');
+
 const departamentosRoutes = require('./routes/departamentosRoutes');
 const municipiosRoutes = require('./routes/municipiosRoutes');
 const votosUpdatesRoutes = require('./routes/votosUpdatesRoutes');
@@ -9,6 +10,7 @@ const eleccionesVotosRoutes = require('./routes/eleccionesVotosRoutes');
 const eleccionesMunicipiosRoutes = require('./routes/eleccionesMunicipiosRoutes');
 const puestosRoutes = require('./routes/puestosRoutes');
 const mesasRoutes = require('./routes/mesasRoutes');
+const resultadosRoutes = require('./routes/resultadosRoutes');
 
 const app = express();
 const port = 3000;
@@ -28,15 +30,13 @@ app.use('/api/elecciones-votos', eleccionesVotosRoutes);
 app.use('/api', eleccionesMunicipiosRoutes);
 app.use('/api/puestos', puestosRoutes);
 app.use('/api/mesas', mesasRoutes);
+app.use('/api/resultados', resultadosRoutes);
 
 // --- SYNC ENDPOINTS (POST for triggering, GET for bulk) ---
-app.post('/api/resultados', resultadosController.postResultados);
-app.get('/api/resultados/sync-all', resultadosController.syncAllDepartamentosResultados);
 app.post('/api/departamentos/sync', departamentosController.syncDepartamentos);
 app.post('/api/municipios-votos/sync', municipiosVotosController.syncMunicipiosVotos);
 
 // --- DATA-FETCHING ENDPOINTS (GET) ---
-app.get('/api/resultados/departamento/:deptoId', resultadosController.getLatestDepartmentResults);
 app.get('/api/resultados/municipio/:deptoId/:municipioId', municipiosVotosController.getLatestMunicipalResults);
 
 

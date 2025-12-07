@@ -3,6 +3,56 @@ const pool = require('../db');
 const { getHondurasTime } = require('../utils/time');
 const { performMunicipalSync } = require('./municipiosVotosController');
 
+// Helper function to process a single mesa
+async function processMesa(id_departamento, id_municipio, id_zona, id_puesto, id_mesa) {
+    const payload = {
+        codigos: [],
+        tipco: "01",
+        depto: id_departamento,
+        comuna: "00",
+        mcpio: id_municipio,
+        zona: id_zona,
+        pesto: id_puesto,
+        mesa: id_mesa
+    };
+
+    try {
+        console.log(`    Fetching results for mesa: ${id_mesa} in puesto: ${id_puesto}, muni: ${id_municipio}, depto: ${id_departamento}`);
+        const response = await axios.post('https://resultadosgenerales2025-api.cne.hn/esc/v1/presentacion-resultados', payload);
+        const { candidatos } = response.data;
+
+        if (candidatos && candidatos.length > 0) {
+            for (const candidato of candidatos) {
+                const { parpo_id, votos } = candidato;
+
+                const [existing] = await pool.query(
+                    'SELECT id FROM elecciones_resultados WHERE id_departamento = ? AND id_municipio = ? AND id_zona = ? AND id_puesto = ? AND id_mesa = ? AND parpo_id = ?',
+                    [id_departamento, id_municipio, id_zona, id_puesto, id_mesa, parpo_id]
+                );
+
+                if (existing.length === 0) {
+                    await pool.query(
+                        'INSERT INTO elecciones_resultados (id_departamento, id_municipio, id_zona, id_puesto, id_mesa, parpo_id, votos) VALUES (?, ?, ?, ?, ?, ?, ?)',
+                        [id_departamento, id_municipio, id_zona, id_puesto, id_mesa, parpo_id, votos]
+                    );
+                } else {
+                    await pool.query(
+                        'UPDATE elecciones_resultados SET votos = ? WHERE id = ?',
+                        [votos, existing[0].id]
+                    );
+                }
+            }
+        }
+    } catch (error) {
+        if (error.response) {
+            console.error(`      Error fetching results for payload ${JSON.stringify(payload)}: Status ${error.response.status}`);
+        } else {
+            console.error(`      Error fetching results for payload ${JSON.stringify(payload)}:`, error.message);
+        }
+    }
+}
+
+
 // ... (postResultados and syncAllDepartamentosResultados functions are preserved here)
 const postResultados = async (req, res) => {
     try {
@@ -190,9 +240,116 @@ const getLatestDepartmentResults = async (req, res) => {
     }
 };
 
+const syncResultadosPorMesa = async (req, res) => {
+  res.status(202).send('Sync for a nivel de mesa results started. This is a very long process, check server logs for progress.');
+
+  (async () => {
+    try {
+      console.log('Starting full synchronization of results per mesa...');
+      const [departamentos] = await pool.query('SELECT id_departamento FROM elecciones_departamentos ORDER BY id_departamento ASC');
+      
+      for (const depto of departamentos) {
+        const { id_departamento } = depto;
+        console.log(`Processing department: ${id_departamento}`);
+        const [municipios] = await pool.query('SELECT id_municipio FROM elecciones_municipios WHERE dpto = ? ORDER BY id_municipio ASC', [id_departamento]);
+
+        for (const muni of municipios) {
+          const { id_municipio } = muni;
+          const [zonas] = await pool.query('SELECT id_zona FROM elecciones_zonas ORDER BY id_zona ASC');
+
+          for (const zona of zonas) {
+            const { id_zona } = zona;
+            const [puestos] = await pool.query('SELECT id_puesto FROM elecciones_puestos WHERE id_departamento = ? AND id_municipio = ? AND id_zona = ? ORDER BY id_puesto ASC', [id_departamento, id_municipio, id_zona]);
+
+            for (const puesto of puestos) {
+              const { id_puesto } = puesto;
+              const [mesas] = await pool.query('SELECT id_mesa FROM elecciones_mesas WHERE id_departamento = ? AND id_municipio = ? AND id_zona = ? AND id_puesto = ? ORDER BY id_mesa ASC', [id_departamento, id_municipio, id_zona, id_puesto]);
+
+              for (const mesa of mesas) {
+                await processMesa(id_departamento, id_municipio, id_zona, id_puesto, mesa.id_mesa);
+              }
+            }
+          }
+        }
+      }
+      console.log('--- Full synchronization of results per mesa finished. ---');
+    } catch (error) {
+      console.error('A critical error occurred during the main sync loop:', error);
+    }
+  })();
+};
+
+const resumeSyncResultadosPorMesa = async (req, res) => {
+    const { startDepto, startMuni, startZona, startPuesto, startMesa } = req.body;
+
+    if (!startDepto || !startMuni || !startZona || !startPuesto || !startMesa) {
+        return res.status(400).send('Missing required body parameters: startDepto, startMuni, startZona, startPuesto, startMesa');
+    }
+
+    res.status(202).send(`Resuming sync for results per mesa from depto: ${startDepto}, muni: ${startMuni}, zona: ${startZona}, puesto: ${startPuesto}, mesa: ${startMesa}.`);
+
+    (async () => {
+        try {
+            console.log(`--- Resuming synchronization from depto: ${startDepto}, muni: ${startMuni}, zona: ${startZona}, puesto: ${startPuesto}, mesa: ${startMesa} ---`);
+            const [departamentos] = await pool.query('SELECT id_departamento FROM elecciones_departamentos ORDER BY id_departamento ASC');
+            
+            let pastStartDepto = false;
+            let pastStartMuni = false;
+            let pastStartZona = false;
+            let pastStartPuesto = false;
+            let pastStartMesa = false;
+
+            for (const depto of departamentos) {
+                const { id_departamento } = depto;
+                if (!pastStartDepto && id_departamento < startDepto) continue;
+                pastStartDepto = true;
+
+                console.log(`Processing department: ${id_departamento}`);
+                const [municipios] = await pool.query('SELECT id_municipio FROM elecciones_municipios WHERE dpto = ? ORDER BY id_municipio ASC', [id_departamento]);
+
+                for (const muni of municipios) {
+                    const { id_municipio } = muni;
+                    if (!pastStartMuni && id_departamento === startDepto && id_municipio < startMuni) continue;
+                    pastStartMuni = true;
+
+                    const [zonas] = await pool.query('SELECT id_zona FROM elecciones_zonas ORDER BY id_zona ASC');
+
+                    for (const zona of zonas) {
+                        const { id_zona } = zona;
+                        if (!pastStartZona && id_departamento === startDepto && id_municipio === startMuni && id_zona < startZona) continue;
+                        pastStartZona = true;
+
+                        const [puestos] = await pool.query('SELECT id_puesto FROM elecciones_puestos WHERE id_departamento = ? AND id_municipio = ? AND id_zona = ? ORDER BY id_puesto ASC', [id_departamento, id_municipio, id_zona]);
+
+                        for (const puesto of puestos) {
+                            const { id_puesto } = puesto;
+                            if (!pastStartPuesto && id_departamento === startDepto && id_municipio === startMuni && id_zona === startZona && id_puesto < startPuesto) continue;
+                            pastStartPuesto = true;
+
+                            const [mesas] = await pool.query('SELECT id_mesa FROM elecciones_mesas WHERE id_departamento = ? AND id_municipio = ? AND id_zona = ? AND id_puesto = ? ORDER BY id_mesa ASC', [id_departamento, id_municipio, id_zona, id_puesto]);
+
+                            for (const mesa of mesas) {
+                                if (!pastStartMesa && id_departamento === startDepto && id_municipio === startMuni && id_zona === startZona && id_puesto === startPuesto && mesa.id_mesa < startMesa) continue;
+                                pastStartMesa = true;
+                                
+                                await processMesa(id_departamento, id_municipio, id_zona, id_puesto, mesa.id_mesa);
+                            }
+                        }
+                    }
+                }
+            }
+            console.log('--- Resumed synchronization finished. ---');
+        } catch (error) {
+            console.error('A critical error occurred during the resumed sync loop:', error);
+        }
+    })();
+};
+
 
 module.exports = {
     postResultados,
     syncAllDepartamentosResultados,
-    getLatestDepartmentResults
+    getLatestDepartmentResults,
+    syncResultadosPorMesa,
+    resumeSyncResultadosPorMesa
 };
