@@ -1,0 +1,7 @@
+mysql-connector-python
+requests
+PyMuPDF
+opencv-python-headless
+numpy
+python-dotenv
+word2number

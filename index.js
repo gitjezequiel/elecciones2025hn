@@ -11,6 +11,7 @@ const eleccionesMunicipiosRoutes = require('./routes/eleccionesMunicipiosRoutes'
 const puestosRoutes = require('./routes/puestosRoutes');
 const mesasRoutes = require('./routes/mesasRoutes');
 const resultadosRoutes = require('./routes/resultadosRoutes');
+const actasRoutes = require('./routes/actasRoutes');
 
 const app = express();
 const port = 3000;
@@ -31,6 +32,7 @@ app.use('/api', eleccionesMunicipiosRoutes);
 app.use('/api/puestos', puestosRoutes);
 app.use('/api/mesas', mesasRoutes);
 app.use('/api/resultados', resultadosRoutes);
+app.use('/api/actas', actasRoutes);
 
 // --- SYNC ENDPOINTS (POST for triggering, GET for bulk) ---
 app.post('/api/departamentos/sync', departamentosController.syncDepartamentos);
