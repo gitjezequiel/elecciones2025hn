@@ -12,6 +12,8 @@ const puestosRoutes = require('./routes/puestosRoutes');
 const mesasRoutes = require('./routes/mesasRoutes');
 const resultadosRoutes = require('./routes/resultadosRoutes');
 const actasRoutes = require('./routes/actasRoutes');
+const descargarActasRoutes = require('./routes/descargarActasRoutes');
+const eleccionesActasPdfRoutes = require('./routes/eleccionesActasPdfRoutes');
 
 const app = express();
 const port = 3000;
@@ -33,6 +35,9 @@ app.use('/api/puestos', puestosRoutes);
 app.use('/api/mesas', mesasRoutes);
 app.use('/api/resultados', resultadosRoutes);
 app.use('/api/actas', actasRoutes);
+app.use('/api/descargar-actas', descargarActasRoutes);
+app.use('/api/actas-ocr', eleccionesActasPdfRoutes);
+app.use('/api/ocr', require('./routes/ocrRoutes'));
 
 // --- SYNC ENDPOINTS (POST for triggering, GET for bulk) ---
 app.post('/api/departamentos/sync', departamentosController.syncDepartamentos);
@@ -40,7 +45,6 @@ app.post('/api/municipios-votos/sync', municipiosVotosController.syncMunicipiosV
 
 // --- DATA-FETCHING ENDPOINTS (GET) ---
 app.get('/api/resultados/municipio/:deptoId/:municipioId', municipiosVotosController.getLatestMunicipalResults);
-
 
 app.listen(port, () => {
     console.log(`Servidor escuchando en http://localhost:${port}`);

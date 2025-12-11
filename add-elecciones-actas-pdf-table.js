@@ -1,34 +1,24 @@
-const db = require('./db');
+const sqlite3 = require('sqlite3').verbose();
+const db = new sqlite3.Database('./elecciones.db');
 
-async function addEleccionesActasPdfTable() {
-  try {
-    const connection = await db.getConnection();
-    await connection.query(`
-      CREATE TABLE IF NOT EXISTS elecciones_actas_pdf (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        id_departamento VARCHAR(2) NOT NULL,
-        id_municipio VARCHAR(3) NOT NULL,
-        id_zona VARCHAR(2) NOT NULL,
-        id_puesto VARCHAR(10) NOT NULL,
-        id_mesa INT NOT NULL,
-        id_partido VARCHAR(10) NOT NULL,
-        votos_pdf INT DEFAULT NULL,
-        votos_sitio INT DEFAULT NULL,
-        diferencia_entre_sitio INT DEFAULT NULL,
-        votos_en_letras VARCHAR(255) DEFAULT NULL,
-        inconsistencia_letras_numeros BOOLEAN DEFAULT FALSE,
-        pdf_url VARCHAR(1024) DEFAULT NULL,
-        createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-        UNIQUE KEY unique_acta_partido (id_departamento, id_municipio, id_zona, id_puesto, id_mesa, id_partido)
-      )
-    `);
-    console.log('Table "elecciones_actas_pdf" created or already exists.');
-    connection.release();
-  } catch (error) {
-    console.error('Error creating table "elecciones_actas_pdf":', error);
-    process.exit(1);
-  }
-}
+db.serialize(() => {
+  db.run(`CREATE TABLE IF NOT EXISTS elecciones_actas_pdf (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id_departamento TEXT,
+    id_municipio TEXT,
+    id_zona TEXT,
+    id_puesto TEXT,
+    nombre_archivo TEXT,
+    url_archivo TEXT,
+    ruta_archivo_local TEXT,
+    UNIQUE(id_departamento, id_municipio, id_zona, id_puesto, nombre_archivo)
+  )`, (err) => {
+    if (err) {
+      console.error(err.message);
+    } else {
+      console.log('Table elecciones_actas_pdf created or already exists.');
+    }
+  });
+});
 
-addEleccionesActasPdfTable().then(() => process.exit());
+db.close();
