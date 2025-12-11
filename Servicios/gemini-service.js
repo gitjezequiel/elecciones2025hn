@@ -4,7 +4,13 @@ const axios = require('axios');
 const GEMINI_API_URL_BASE = 'https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent';
 
 async function reviewOcrResults(rawOcrText, finalVotes) {
-    // ... (partyMapping y verificación de apiKey) ...
+    const partyMapping = {
+        '0001': 'PARTIDO 1',
+        '0002': 'PARTIDO 2',
+        '0003': 'PARTIDO 3',
+        '0004': 'PARTIDO 4',
+        '0005': 'PARTIDO 5'
+    };
     
     const apiKey = process.env.GEMINI_API_KEY;
     
@@ -62,14 +68,11 @@ ${sanitizedOcrText}
 ***NOTA:*** Si el valor es ilegible en el TEXTO BRUTO, usa **-1**.
 `;
 
+
     try {
         const geminiResponse = await axios.post(GEMINI_API_URL_FINAL, {
             contents: [{ role: "user", parts: [{ text: prompt }] }],
             
-            // 🚩 SOLUCIÓN DEL ÚLTIMO 400: USAR 'generationConfig'
-            generationConfig: { 
-                 responseMimeType: "application/json", 
-            }
         }, {
             headers: { 
                 'Content-Type': 'application/json' 
