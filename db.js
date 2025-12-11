@@ -1,12 +1,12 @@
+require('dotenv').config();
 const mysql = require('mysql2/promise');
 
-// WARNING: Hardcoding credentials is a security risk.
-// It is recommended to use environment variables or a secret management system.
+// Use environment variables for database configuration
 const dbConfig = {
-    host: '34.174.64.218',
-    user: 'uefdglongqgvo',
-    password: 'Axalon2025#..',
-    database: 'dbqygl8bcsfkjh'
+    host: process.env.DB_HOST || '34.174.64.218',
+    user: process.env.DB_USER || 'uefdglongqgvo',
+    password: process.env.DB_PASSWORD || 'Axalon2025#..',
+    database: process.env.DB_DATABASE || 'dbqygl8bcsfkjh'
 };
 
 const pool = mysql.createPool(dbConfig);
