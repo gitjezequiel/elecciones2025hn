@@ -1,2 +1,11 @@
 node_modules/
 actas_pdfs/
+db.js
+*.env
+credentials.json
+secrets.json
+
+# --- Archivos de Entorno y Seguridad (¡CRUCIALES!) ---
+.env
+.env.local
+.env.*.local
